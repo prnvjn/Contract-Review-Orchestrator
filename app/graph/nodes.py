@@ -15,7 +15,11 @@ import json
 
 # Initialize Clients
 openai_client = instructor.patch(OpenAI(api_key=settings.OPENAI_API_KEY or "mock_key"))
-anthropic_client = instructor.from_anthropic(Anthropic(api_key=settings.ANTHROPIC_API_KEY or "mock_key"))
+try:
+    anthropic_client = instructor.from_anthropic(Anthropic(api_key=settings.ANTHROPIC_API_KEY or "mock_key"))
+except AttributeError:
+    # Fallback for older versions or environment issues
+    anthropic_client = instructor.patch(Anthropic(api_key=settings.ANTHROPIC_API_KEY or "mock_key"))
 
 async def validate_preflight_node(state: AgentState):
     """
@@ -90,8 +94,9 @@ async def extract_contract_node(state: AgentState):
                 ]
             )
         elif provider == "anthropic":
+            # Using the specific verified model from test_anthropic_models.py
             extraction = anthropic_client.messages.create(
-                model="claude-3-5-sonnet-20240620",
+                model="claude-sonnet-4-6",
                 max_tokens=4096,
                 response_model=ContractExtraction,
                 messages=[
