@@ -1,4 +1,4 @@
-from sqlmodel import create_engine, Session, SQLModel
+from sqlmodel import SQLModel, Session, create_engine
 from app.core.config import settings
 
 engine = create_engine(
@@ -8,7 +8,8 @@ engine = create_engine(
 )
 
 def init_db():
-    # Robust for Streamlit reloads
+    # Import models here to register them with SQLModel.metadata
+    from app.db.models import ContractRequest, ToolCall, ObservabilityLog
     SQLModel.metadata.create_all(engine)
 
 def get_session():
