@@ -55,10 +55,10 @@ async def trigger_extraction(request: ExtractionRequest, db: Session = Depends(g
         db_request = db.get(ContractRequest, uuid.UUID(request_id))
         db_request.status = final_state["status"]
         if final_state["extraction"]:
-            db_request.extracted_data = final_state["extraction"].model_dump()
+            db_request.extracted_data = final_state["extraction"].model_dump(mode="json")
         
         if final_state["alarms"]:
-            db_request.alarms = [a.model_dump() for a in final_state["alarms"]]
+            db_request.alarms = [a.model_dump(mode="json") for a in final_state["alarms"]]
             
         db_request.updated_at = db_request.updated_at # Trigger update
         db.add(db_request)

@@ -87,8 +87,8 @@ with tab_orchestrator:
                             parent_transaction_id=parent_tx,
                             raw_text=raw_text,
                             status=final_state["status"],
-                            extracted_data=final_state["extraction"].model_dump() if final_state["extraction"] else None,
-                            alarms=[a.model_dump() for a in final_state["alarms"]] if final_state["alarms"] else None
+                            extracted_data=final_state["extraction"].model_dump(mode="json") if final_state["extraction"] else None,
+                            alarms=[a.model_dump(mode="json") for a in final_state["alarms"]] if final_state["alarms"] else None
                         )
                         db.add(new_request)
                         db.commit()
