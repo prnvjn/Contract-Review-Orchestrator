@@ -1,5 +1,6 @@
 import instructor
 from openai import OpenAI
+from anthropic import Anthropic
 from app.core.config import settings
 from app.graph.state import AgentState
 from app.schemas.contract import ContractExtraction
@@ -14,7 +15,29 @@ import json
 
 # Initialize Clients
 openai_client = instructor.patch(OpenAI(api_key=settings.OPENAI_API_KEY or "mock_key"))
-# anthropic_client = instructor.from_anthropic(Anthropic(api_key=settings.ANTHROPIC_API_KEY))
+anthropic_client = instructor.from_anthropic(Anthropic(api_key=settings.ANTHROPIC_API_KEY or "mock_key"))
+
+async def validate_preflight_node(state: AgentState):
+    """
+    GUARDRAIL: Checks if the document is valid before starting extraction.
+    ALARM: Triggers INVALID_DOCUMENT alarm on failure.
+    """
+    result = validate_document(state["raw_text"])
+    
+    if not result["is_valid"]:
+        alarm = trigger_alarm(
+            "INVALID_DOCUMENT", 
+            {"raw_text_length": len(state["raw_text"])},
+            result["error"]
+        )
+        return {
+            "status": "failed",
+            "alarms": state.get("alarms", []) + [alarm],
+            "errors": [result["error"]],
+            "next_node": "end"
+        }
+    
+    return {"status": "validated", "next_node": "extract"}
 
 async def extract_contract_node(state: AgentState):
     """
@@ -23,16 +46,33 @@ async def extract_contract_node(state: AgentState):
     """
     provider = settings.LLM_PROVIDER
     
-    if not settings.OPENAI_API_KEY and provider == "openai":
-        # Mock extraction for Demo
+    # Check for keys before attempting live call
+    if provider == "openai" and not settings.OPENAI_API_KEY:
+        # Mock for demo if no key
         return {
             "extraction": ContractExtraction(
-                property_address="123 Main St, Mock City",
+                property_address="123 OpenAI St, GPT City",
                 purchase_price=450000,
-                buyer_names=["Mock Buyer"],
-                seller_names=["Mock Seller"],
+                buyer_names=["GPT User"],
+                seller_names=["OpenAI Judge"],
                 closing_date=date(2024, 12, 31),
                 earnest_money_deposit=5000,
+                milestones=[]
+            ),
+            "status": "extracted",
+            "next_node": "verify_mls"
+        }
+    
+    if provider == "anthropic" and not settings.ANTHROPIC_API_KEY:
+        # Mock for demo if no key
+        return {
+            "extraction": ContractExtraction(
+                property_address="456 Swappable Lane, Claude City",
+                purchase_price=1200000,
+                buyer_names=["Claude User"],
+                seller_names=["Hackathon Judge"],
+                closing_date=date(2025, 1, 1),
+                earnest_money_deposit=20000,
                 milestones=[]
             ),
             "status": "extracted",
@@ -50,22 +90,18 @@ async def extract_contract_node(state: AgentState):
                 ]
             )
         elif provider == "anthropic":
-            # This is the 'Bonus' Swappable Worker implementation
-            # extraction = anthropic_client.messages.create(...)
-            # For demo without key, we return a different mock to prove swap
-            extraction = ContractExtraction(
-                property_address="456 Swappable Lane, Claude City",
-                purchase_price=1200000,
-                buyer_names=["Claude User"],
-                seller_names=["Hackathon Judge"],
-                closing_date=date(2025, 1, 1),
-                earnest_money_deposit=20000,
-                milestones=[]
+            extraction = anthropic_client.messages.create(
+                model="claude-3-5-sonnet-20240620",
+                max_tokens=4096,
+                response_model=ContractExtraction,
+                messages=[
+                    {"role": "user", "content": f"Extract real estate contract details accurately from this text: {state['raw_text']}"}
+                ]
             )
             
         return {"extraction": extraction, "status": "extracted", "next_node": "verify_mls"}
     except Exception as e:
-        alarm = trigger_alarm("EXTRACTION_FAILURE", {"error": str(e)}, "LLM failed to produce valid schema.")
+        alarm = trigger_alarm("EXTRACTION_FAILURE", {"error": str(e)}, f"LLM ({provider}) failed to produce valid schema.")
         return {
             "errors": [str(e)], 
             "status": "failed", 
