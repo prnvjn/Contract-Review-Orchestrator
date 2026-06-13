@@ -189,11 +189,11 @@ with tab_harness:
     st.subheader("🛡️ Safety Harness Audit Log")
     st.info("This log shows deterministic alarms triggered by the harness during agent execution.")
     
-    # Query all requests with alarms
+    # Query all requests and filter in Python for robustness
     db = next(get_session())
-    from sqlmodel import select, col
-    # Filter for records where alarms is not None and not empty
-    requests_with_alarms = db.exec(select(ContractRequest).where(ContractRequest.alarms != None).order_by(ContractRequest.created_at.desc())).all()
+    from sqlmodel import select
+    all_requests = db.exec(select(ContractRequest).order_by(ContractRequest.created_at.desc())).all()
+    requests_with_alarms = [r for r in all_requests if r.alarms]
     
     if requests_with_alarms:
         for r in requests_with_alarms:
@@ -209,7 +209,7 @@ with tab_harness:
         st.success("No safety alarms triggered in recent history. Harness is quiet.")
 
 st.sidebar.markdown("### 🤖 Agent Configuration")
-provider = st.sidebar.selectbox("LLM Provider", ["openai", "anthropic"], index=0)
+provider = st.sidebar.selectbox("LLM Provider", ["anthropic", "openai"], index=0)
 parser_type = st.sidebar.selectbox("PDF Parser", ["pypdf", "llamaparse"], index=0)
 
 from app.core.config import settings

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # Application Settings
     DEBUG: bool = False
     PROJECT_NAME: str = "ContractReviewOrchestrator"
-    LLM_PROVIDER: str = "openai" # "openai" or "anthropic"
+    LLM_PROVIDER: str = "anthropic" # "openai" or "anthropic"
     PARSER_TYPE: str = "pypdf" # "pypdf" or "llamaparse"
 
     # External Tools
