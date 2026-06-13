@@ -72,5 +72,8 @@ def create_workflow():
 
     return workflow.compile()
 
+def create_app_graph():
+    return create_workflow()
+
 # Export the compiled graph
-app_graph = create_workflow()
+app_graph = create_app_graph()
