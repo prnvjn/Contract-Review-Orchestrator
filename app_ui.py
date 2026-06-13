@@ -69,7 +69,10 @@ with tab_orchestrator:
                     
                     # Run the graph
                     st.write("Executing LangGraph nodes...")
-                    final_state = asyncio.run(app_graph.ainvoke(initial_state))
+                    final_state = asyncio.run(app_graph.ainvoke(
+                        initial_state, 
+                        config={"recursion_limit": settings.RECURSION_LIMIT}
+                    ))
                     
                     # Persist to DB
                     try:
@@ -101,13 +104,34 @@ with tab_orchestrator:
             
             # Display Extraction
             if state["extraction"]:
+                ext = state["extraction"]
                 st.success("✅ Extraction Successful")
-                st.json(state["extraction"].model_dump())
+                
+                col_c, col_d = st.columns(2)
+                with col_c:
+                    st.write(f"📍 **Address:** {ext.property_address}")
+                    st.write(f"💰 **Price:** ${ext.purchase_price:,.2f}")
+                with col_d:
+                    st.write(f"👥 **Buyers:** {', '.join(ext.buyer_names)}")
+                    st.write(f"📅 **Closing:** {ext.closing_date}")
                 
                 st.divider()
                 st.subheader("Milestones")
-                for m in state["extraction"].milestones:
-                    st.info(f"📅 **{m.name}**: {m.due_date}")
+                if ext.milestones:
+                    m_list = [
+                        {
+                            "Milestone": m.name, 
+                            "Due Date": str(m.due_date),
+                            "Value": f"${m.value:,.2f}" if m.value is not None else "—"
+                        } 
+                        for m in ext.milestones
+                    ]
+                    st.table(m_list)
+                else:
+                    st.info("No milestones detected.")
+                
+                with st.expander("View Raw Extraction"):
+                    st.json(ext.model_dump())
             
             # Display Guardrails
             st.divider()
@@ -157,7 +181,7 @@ with tab_dashboard:
                 })
             
             df = pd.DataFrame(data)
-            st.dataframe(df, width=None) # width=None is safe and often defaults correctly
+            st.dataframe(df, use_container_width=True)
             
             # Detail selection
             selected_tx = st.selectbox("Select Transaction to View Details", df["Transaction ID"].unique())
@@ -179,7 +203,33 @@ with tab_dashboard:
                             st.error(f"Approval failed: {e}")
                 
                 if req.extracted_data:
-                    st.json(req.extracted_data)
+                    ext = req.extracted_data
+                    st.markdown("---")
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.markdown(f"📍 **Address:** {ext.get('property_address', 'N/A')}")
+                        st.markdown(f"💰 **Price:** ${ext.get('purchase_price', 0):,.2f}")
+                        st.markdown(f"🏦 **Earnest Money:** ${ext.get('earnest_money_deposit', 0):,.2f}")
+                    
+                    with col_b:
+                        st.markdown(f"👥 **Buyers:** {', '.join(ext.get('buyer_names', []))}")
+                        st.markdown(f"👤 **Sellers:** {', '.join(ext.get('seller_names', []))}")
+                        st.markdown(f"📅 **Closing Date:** {ext.get('closing_date', 'N/A')}")
+
+                    if ext.get("milestones"):
+                        st.markdown("#### 📅 Transaction Milestones")
+                        m_data = [
+                            {
+                                "Milestone": m["name"], 
+                                "Due Date": str(m["due_date"]),
+                                "Value": f"${m['value']:,.2f}" if m.get("value") is not None else "—"
+                            } 
+                            for m in ext["milestones"]
+                        ]
+                        st.table(m_data)
+                    
+                    with st.expander("View Raw Extraction JSON"):
+                        st.json(ext)
         else:
             st.info("No historical data found.")
     except Exception as e:
