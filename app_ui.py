@@ -189,18 +189,38 @@ with tab_dashboard:
                 req = next(r for r in requests if r.parent_transaction_id == selected_tx)
                 st.write(f"### Details for {selected_tx}")
                 
-                # HITL Escalation Path
-                if req.status == "blocked":
-                    st.warning("⚠️ This transaction is BLOCKED by the Financial Circuit Breaker.")
-                    if st.button(f"✅ Manually Approve {selected_tx}"):
-                        try:
-                            req.status = "completed"
-                            db.add(req)
-                            db.commit()
-                            st.success("Transaction manually approved and moved to completed.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Approval failed: {e}")
+                # Human-in-the-Loop Action Center
+                if req.status not in ["completed", "rejected"]:
+                    st.markdown("### 🛠️ Final Review Actions")
+                    col_approve, col_reject = st.columns(2)
+                    
+                    with col_approve:
+                        if st.button(f"✅ Approve {selected_tx}", use_container_width=True):
+                            try:
+                                req.status = "completed"
+                                db.add(req)
+                                db.commit()
+                                st.success("Transaction approved.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Approval failed: {e}")
+                    
+                    with col_reject:
+                        if st.button(f"❌ Reject {selected_tx}", use_container_width=True):
+                            try:
+                                req.status = "rejected"
+                                db.add(req)
+                                db.commit()
+                                st.error("Transaction rejected.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Rejection failed: {e}")
+                    
+                    if req.status == "blocked":
+                        st.warning("⚠️ Note: This is currently BLOCKED by the Financial Circuit Breaker.")
+                else:
+                    status_color = "green" if req.status == "completed" else "red"
+                    st.markdown(f"**Final Decision:** :{status_color}[{req.status.upper()}]")
                 
                 if req.extracted_data:
                     ext = req.extracted_data
