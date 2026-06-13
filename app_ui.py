@@ -30,7 +30,7 @@ with tab_orchestrator:
             if uploaded_file:
                 with st.spinner("Extracting text from PDF..."):
                     file_bytes = uploaded_file.read()
-                    raw_text = extract_text_from_pdf(file_bytes)
+                    raw_text = asyncio.run(extract_text_from_pdf(file_bytes))
                     if raw_text:
                         st.success("Text extracted successfully!")
                         with st.expander("Show Extracted Text"):
@@ -210,8 +210,11 @@ with tab_harness:
 
 st.sidebar.markdown("### 🤖 Agent Configuration")
 provider = st.sidebar.selectbox("LLM Provider", ["openai", "anthropic"], index=0)
+parser_type = st.sidebar.selectbox("PDF Parser", ["pypdf", "llamaparse"], index=0)
+
 from app.core.config import settings
 settings.LLM_PROVIDER = provider
+settings.PARSER_TYPE = parser_type
 
 st.sidebar.markdown("### System Telemetry")
 if "final_state" in st.session_state:

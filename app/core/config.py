@@ -4,6 +4,8 @@ from typing import Optional
 class Settings(BaseSettings):
     # API Keys
     OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+    LLAMA_CLOUD_API_KEY: Optional[str] = None
     
     # Database
     DATABASE_URL: str = "sqlite:///./contract_orchestrator.db"
@@ -15,6 +17,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     PROJECT_NAME: str = "ContractReviewOrchestrator"
     LLM_PROVIDER: str = "openai" # "openai" or "anthropic"
+    PARSER_TYPE: str = "pypdf" # "pypdf" or "llamaparse"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

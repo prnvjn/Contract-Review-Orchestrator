@@ -89,7 +89,7 @@ async def trigger_pdf_extraction(
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
     
     file_content = await file.read()
-    raw_text = extract_text_from_pdf(file_content)
+    raw_text = await extract_text_from_pdf(file_content)
     
     if not raw_text:
         raise HTTPException(status_code=400, detail="Failed to extract text from PDF.")
