@@ -99,13 +99,14 @@ async def check_safety_node(state: AgentState):
 
 async def sync_crm_node(state: AgentState):
     """Syncs the extracted milestones to the CRM."""
-    result = await crm_client.sync_transaction_milestones(
+    # 1. Sync to CRM
+    crm_result = await crm_client.sync_transaction_milestones(
         state["request_id"],
         state["extraction"].model_dump()
     )
     
     return {
-        "crm_sync_result": result,
+        "crm_sync_result": crm_result,
         "status": "completed",
         "next_node": "end"
     }
