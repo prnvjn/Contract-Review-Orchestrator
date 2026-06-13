@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # Application Settings
     DEBUG: bool = False
     PROJECT_NAME: str = "ContractReviewOrchestrator"
+    LLM_PROVIDER: str = "openai" # "openai" or "anthropic"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

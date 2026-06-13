@@ -164,6 +164,20 @@ with tab_dashboard:
             if selected_tx:
                 req = next(r for r in requests if r.parent_transaction_id == selected_tx)
                 st.write(f"### Details for {selected_tx}")
+                
+                # HITL Escalation Path
+                if req.status == "blocked":
+                    st.warning("⚠️ This transaction is BLOCKED by the Financial Circuit Breaker.")
+                    if st.button(f"✅ Manually Approve {selected_tx}"):
+                        try:
+                            req.status = "completed"
+                            db.add(req)
+                            db.commit()
+                            st.success("Transaction manually approved and moved to completed.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Approval failed: {e}")
+                
                 if req.extracted_data:
                     st.json(req.extracted_data)
         else:
@@ -193,6 +207,11 @@ with tab_harness:
                     st.json(alarm['context'])
     else:
         st.success("No safety alarms triggered in recent history. Harness is quiet.")
+
+st.sidebar.markdown("### 🤖 Agent Configuration")
+provider = st.sidebar.selectbox("LLM Provider", ["openai", "anthropic"], index=0)
+from app.core.config import settings
+settings.LLM_PROVIDER = provider
 
 st.sidebar.markdown("### System Telemetry")
 if "final_state" in st.session_state:
