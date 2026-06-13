@@ -6,6 +6,8 @@ from app.core.database import Session, engine
 from app.db.models import ContractRequest
 import json
 
+from app.core.parser import extract_text_from_pdf
+
 st.set_page_config(page_title="ContractReviewOrchestrator", layout="wide")
 
 st.title("📑 ContractReviewOrchestrator")
@@ -15,11 +17,29 @@ col1, col2 = st.columns([1, 1])
 
 with col1:
     st.header("Input Contract")
-    raw_text = st.text_area(
-        "Paste Contract Text Here", 
-        height=400,
-        placeholder="AGREEMENT OF SALE...\nThis agreement is made between..."
-    )
+    
+    input_method = st.radio("Choose Input Method:", ["Upload PDF", "Paste Text"])
+    
+    raw_text = ""
+    if input_method == "Upload PDF":
+        uploaded_file = st.file_uploader("Upload a Contract PDF", type=["pdf"])
+        if uploaded_file:
+            with st.spinner("Extracting text from PDF..."):
+                file_bytes = uploaded_file.read()
+                raw_text = extract_text_from_pdf(file_bytes)
+                if raw_text:
+                    st.success("Text extracted successfully!")
+                    with st.expander("Show Extracted Text"):
+                        st.text(raw_text[:1000] + "...")
+                else:
+                    st.error("Failed to extract text from PDF.")
+    else:
+        raw_text = st.text_area(
+            "Paste Contract Text Here", 
+            height=400,
+            placeholder="AGREEMENT OF SALE...\nThis agreement is made between..."
+        )
+    
     parent_tx = st.text_input("Parent Transaction ID (Optional)", value="TX-999")
     
     if st.button("🚀 Run Orchestrator", use_container_width=True):

@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form
 from sqlmodel import Session
 from app.core.database import init_db, get_session
 from app.db.models import ContractRequest
 from app.graph.workflow import app_graph
+from app.core.parser import extract_text_from_pdf
 import uuid
 from pydantic import BaseModel
 from typing import Optional
@@ -68,10 +69,29 @@ async def trigger_extraction(request: ExtractionRequest, db: Session = Depends(g
         }
     except Exception as e:
         db_request = db.get(ContractRequest, uuid.UUID(request_id))
-        db_request.status = "failed"
-        db.add(db_request)
-        db.commit()
+        if db_request:
+            db_request.status = "failed"
+            db.add(db_request)
+            db.commit()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/extract-pdf")
+async def trigger_pdf_extraction(
+    file: UploadFile = File(...), 
+    parent_transaction_id: Optional[str] = Form(None),
+    db: Session = Depends(get_session)
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+    
+    file_content = await file.read()
+    raw_text = extract_text_from_pdf(file_content)
+    
+    if not raw_text:
+        raise HTTPException(status_code=400, detail="Failed to extract text from PDF.")
+    
+    request_data = ExtractionRequest(raw_text=raw_text, parent_transaction_id=parent_transaction_id)
+    return await trigger_extraction(request_data, db)
 
 @app.get("/health")
 def health_check():
