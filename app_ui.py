@@ -7,6 +7,7 @@ from app.db.models import ContractRequest
 import json
 import pandas as pd
 from app.core.parser import extract_text_from_pdf
+from app.core.config import settings
 
 st.set_page_config(page_title="ContractReviewOrchestrator", layout="wide")
 
@@ -282,7 +283,6 @@ st.sidebar.markdown("### 🤖 Agent Configuration")
 provider = st.sidebar.selectbox("LLM Provider", ["anthropic", "openai"], index=0)
 parser_type = st.sidebar.selectbox("PDF Parser", ["pypdf", "llamaparse"], index=0)
 
-from app.core.config import settings
 settings.LLM_PROVIDER = provider
 settings.PARSER_TYPE = parser_type
 
