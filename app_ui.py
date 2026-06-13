@@ -13,7 +13,7 @@ st.set_page_config(page_title="ContractReviewOrchestrator", layout="wide")
 st.title("📑 ContractReviewOrchestrator")
 
 # Use tabs for Navigation
-tab_orchestrator, tab_dashboard = st.tabs(["🚀 Orchestrator", "📊 Transaction Dashboard"])
+tab_orchestrator, tab_dashboard, tab_harness = st.tabs(["🚀 Orchestrator", "📊 Transaction Dashboard", "🛡️ Harness Audit Log"])
 
 with tab_orchestrator:
     st.subheader("Agentic Real Estate Milestone Extraction")
@@ -46,7 +46,7 @@ with tab_orchestrator:
         
         parent_tx = st.text_input("Parent Transaction ID (Optional)", value="TX-999")
         
-        if st.button("🚀 Run Orchestrator", use_container_width=True):
+        if st.button("🚀 Run Orchestrator", width="stretch"):
             if not raw_text:
                 st.error("Please paste a contract first!")
             else:
@@ -71,6 +71,23 @@ with tab_orchestrator:
                     st.write("Executing LangGraph nodes...")
                     final_state = asyncio.run(app_graph.ainvoke(initial_state))
                     
+                    # Persist to DB
+                    try:
+                        db = next(get_session())
+                        new_request = ContractRequest(
+                            id=uuid.UUID(request_id),
+                            document_id=f"doc_{request_id[:8]}",
+                            parent_transaction_id=parent_tx,
+                            raw_text=raw_text,
+                            status=final_state["status"],
+                            extracted_data=final_state["extraction"].model_dump() if final_state["extraction"] else None,
+                            alarms=[a.model_dump() for a in final_state["alarms"]] if final_state["alarms"] else None
+                        )
+                        db.add(new_request)
+                        db.commit()
+                    except Exception as e:
+                        st.warning(f"Failed to persist to database: {e}")
+
                     status.update(label="Workflow Complete!", state="complete", expanded=False)
                     
                     st.session_state.final_state = final_state
@@ -124,7 +141,8 @@ with tab_dashboard:
     # Session management for DB
     try:
         db = next(get_session())
-        requests = db.query(ContractRequest).order_by(ContractRequest.created_at.desc()).all()
+        from sqlmodel import select
+        requests = db.exec(select(ContractRequest).order_by(ContractRequest.created_at.desc())).all()
         
         if requests:
             # Prepare data for display
@@ -139,7 +157,7 @@ with tab_dashboard:
                 })
             
             df = pd.DataFrame(data)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width=None) # width=None is safe and often defaults correctly
             
             # Detail selection
             selected_tx = st.selectbox("Select Transaction to View Details", df["Transaction ID"].unique())
@@ -152,6 +170,29 @@ with tab_dashboard:
             st.info("No historical data found.")
     except Exception as e:
         st.error(f"Error loading dashboard: {e}")
+
+with tab_harness:
+    st.subheader("🛡️ Safety Harness Audit Log")
+    st.info("This log shows deterministic alarms triggered by the harness during agent execution.")
+    
+    # Query all requests with alarms
+    db = next(get_session())
+    from sqlmodel import select, col
+    # Filter for records where alarms is not None and not empty
+    requests_with_alarms = db.exec(select(ContractRequest).where(ContractRequest.alarms != None).order_by(ContractRequest.created_at.desc())).all()
+    
+    if requests_with_alarms:
+        for r in requests_with_alarms:
+            with st.expander(f"🚨 {r.parent_transaction_id} - {r.created_at.strftime('%H:%M:%S')}"):
+                for alarm in r.alarms:
+                    sev_color = {"CRITICAL": "red", "HIGH": "orange", "MEDIUM": "blue", "LOW": "grey"}.get(alarm['severity'], "grey")
+                    st.markdown(f"### Type: `{alarm['alarm_type']}`")
+                    st.markdown(f"**Severity:** :{sev_color}[{alarm['severity']}]")
+                    st.warning(f"**Message:** {alarm['message']}")
+                    st.info(f"👉 **Recommended Action:** {alarm['recommended_action']}")
+                    st.json(alarm['context'])
+    else:
+        st.success("No safety alarms triggered in recent history. Harness is quiet.")
 
 st.sidebar.markdown("### System Telemetry")
 if "final_state" in st.session_state:

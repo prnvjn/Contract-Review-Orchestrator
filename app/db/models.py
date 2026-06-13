@@ -10,13 +10,16 @@ class RequestBase(SQLModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ContractRequest(RequestBase, table=True):
+    __table_args__ = {"extend_existing": True}
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     parent_transaction_id: Optional[str] = Field(default=None, index=True)
     raw_text: str
     extracted_data: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    alarms: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     token_usage_total: int = 0
 
 class ToolCall(SQLModel, table=True):
+    __table_args__ = {"extend_existing": True}
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     request_id: uuid.UUID = Field(foreign_key="contractrequest.id")
     tool_name: str
@@ -26,6 +29,7 @@ class ToolCall(SQLModel, table=True):
     executed_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ObservabilityLog(SQLModel, table=True):
+    __table_args__ = {"extend_existing": True}
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     request_id: uuid.UUID = Field(foreign_key="contractrequest.id")
     node_name: str
