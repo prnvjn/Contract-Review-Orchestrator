@@ -8,6 +8,7 @@ engine = create_engine(
 )
 
 def init_db():
+    # Robust for Streamlit reloads
     SQLModel.metadata.create_all(engine)
 
 def get_session():
