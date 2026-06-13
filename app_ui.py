@@ -2,12 +2,15 @@ import streamlit as st
 import asyncio
 import uuid
 from app.graph.workflow import app_graph
-from app.core.database import Session, engine, get_session
+from app.core.database import Session, engine, get_session, init_db
 from app.db.models import ContractRequest
 import json
 import pandas as pd
 from app.core.parser import extract_text_from_pdf
 from app.core.config import settings
+
+# Initialize Database
+init_db()
 
 st.set_page_config(page_title="ContractReviewOrchestrator", layout="wide")
 
