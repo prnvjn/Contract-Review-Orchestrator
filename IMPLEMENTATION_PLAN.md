@@ -1,5 +1,35 @@
 # ContractReviewOrchestrator Implementation Plan
 
+## Product Requirements (PRD)
+
+**Objective:** Build an agentic pipeline that automates the extraction of key milestones from real estate contracts while enforcing deterministic safety guardrails.
+
+**Target User:** Real Estate Transaction Coordinators who need to sync contract dates to CRMs without manual data entry errors.
+
+**Core Requirements:**
+1. **Accuracy:** Use `Instructor` to guarantee JSON schema adherence.
+2. **Safety:** Implement "Circuit Breakers" for high-value transactions (>$5M).
+3. **Compliance:** Automatically scrub "legal advice" from LLM outputs.
+4. **Auditability:** Log every tool call and state transition to a database.
+
+## System Workflow (Logic Flow)
+
+```mermaid
+graph TD
+    A[Start: Upload Contract] --> B[Pre-flight: Validate File & Tokens]
+    B --> C[LLM: Extract Fields using Instructor]
+    C --> D{Validation Success?}
+    D -- No --> E[Retry with Error Feedback]
+    E --> C
+    D -- Yes --> F[Mid-flight: Financial Threshold Check]
+    F -- >$5M --> G[HITL: Await Approval]
+    G -- Approved --> H[Read Tool: Verify with MLS]
+    F -- <=$5M --> H
+    H --> I[Post-flight: Scrub Legal Advice]
+    I --> J[Write Tool: Sync to CRM]
+    J --> K[End: Update Status & Log Telemetry]
+```
+
 ## Project Structure Implementation
 
 I'll create the directory structure as specified in the architecture:
