@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "openai" # "openai" or "anthropic"
     PARSER_TYPE: str = "pypdf" # "pypdf" or "llamaparse"
 
+    # External Tools
+    SIMPLYRETS_KEY: str = "simplyrets"
+    SIMPLYRETS_SECRET: str = "simplyrets"
+    FUB_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 settings = Settings()
